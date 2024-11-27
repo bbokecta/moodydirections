@@ -26,7 +26,7 @@ messages = [
     },
     {
         "role" : "user",
-        "content" : "Find the coordinates of On the Hoof Sydenham"
+        "content" : "Give me the directions from the Hogarth Worldwide in London to On the Hoof Sydenham"
     }
 ]
 
@@ -62,14 +62,14 @@ def directions(coords_1, coords_3):
     #directions = [direction['instruction'] for direction in steps]
     return f"Okay. You have to {total_steps}"
 
-def coordinates(address):
-    geo_url = f"https://geocode.maps.co/search?q={address}&api_key={geo_key}"
-    geo_response = requests.get(geo_url)
-    geo_data = geo_response.json()
+# def coordinates(address):
+#     geo_url = f"https://geocode.maps.co/search?q={address}&api_key={geo_key}"
+#     geo_response = requests.get(geo_url)
+#     geo_data = geo_response.json()
 
-    lat = geo_data[0]['lat']
-    lon = geo_data[0]['lon']
-    return f"Here are the coordinates of {address}: {lat}, {lon} "
+#     lat = geo_data[0]['lat']
+#     lon = geo_data[0]['lon']
+#     return f"Here are the coordinates of {address}: {lon}, {lat} "
 
 functions = [
     {
@@ -170,7 +170,7 @@ if gpt_tools:
             model = "GPT-4",
             messages=messages
         )
-        print(second_response.choices[0].message.content)
+        print(second_response.choices[0].message)
 
 else:
     print(response.choices[0].message)
