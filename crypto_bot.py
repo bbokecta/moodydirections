@@ -16,7 +16,7 @@ messages = [
     },
     {
         "role" : "user",
-        "content" : "Find the coordinates of On the Hoof Sydenham"
+        "content" : "What is today's horoscope for Sagittarius"
     }
 ]
 
@@ -27,39 +27,12 @@ def crypto_price(crypto_name, fiat_currency):
     current_price = [coin['current_price'] for coin in data if coin['id'] == crypto_name][0]
     return f"I think the current price of {crypto_name} in {fiat_currency} is {current_price} {fiat_currency}"
 
-def directions(coords_1, coords_3):
-    body = {
-        "coordinates":[
-            coords_1,
-            coords_3
-        ]
-    }
-
-    headers = {
-        'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
-        'Authorization' : '5b3ce3597851110001cf62480b06e857f378414f9c410c1b4ab80066',
-        'Content-Type' : 'application/json; charset=utf-8'
-    }
-
-    route_response = requests.post('https://api.openrouteservice.org/v2/directions/driving-car/json', json=body, headers=headers) 
-    meta_directions = route_response.json()
-
-    steps = meta_directions['routes'][0]['segments'][0]['steps']
-    total_steps = ''
-
-    for direction in steps:
-        total_steps += direction['instruction'] + '\n'
-    #directions = [direction['instruction'] for direction in steps]
-    return f"Okay. You have to {total_steps}"
-
-def coordinates(address):
-    geo_url = f"https://geocode.maps.co/search?q={address}&api_key={geo_key}"
-    geo_response = requests.get(geo_url)
-    geo_data = geo_response.json()
-
-    lat = geo_data[0]['lat']
-    lon = geo_data[0]['lon']
-    return f"Here are the coordinates of {address}: {lat}, {lon} "
+def horoscope(star_sign):
+    horoscope_url = f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign={star_sign}&day=TODAY"
+    horoscope_response = requests.get(horoscope_url)
+    horoscope_data = horoscope_response.json()
+    daily_horoscope = horoscope_data['data']['horoscope_data']
+    return daily_horoscope
 
 functions = [
     {
@@ -82,6 +55,23 @@ functions = [
                 "required" : ["crypto_name", "fiat_currency"]
             }
         }
+    },
+    {
+        "type" : "function",
+        "function" : {
+            "name" : "get_horoscope",
+            "description" : "Gets the daily horoscope of a specified star sign",
+            "parameters" : {
+                "type" : "object", #tells chat-gpt to return key/value pairs
+                "properties" : {
+                    "star_sign" : {
+                        "type" : "string",
+                        "description" : "The name of the star sign whose horoscope I want"
+                    }
+                },
+                "required" : ["star_sign"]
+            }
+        }
     }
 ]
 
@@ -98,7 +88,8 @@ gpt_tools = response.choices[0].message.tool_calls #list of tools/functions used
 
 if gpt_tools:
     available_functions = {
-        "get_crypto_price" : crypto_price
+        "get_crypto_price" : crypto_price,
+        "get_horoscope" : horoscope
     }
 
     messages.append(response_message)
@@ -106,7 +97,7 @@ if gpt_tools:
         function_name = gpt_tool.function.name
         function_to_call = available_functions[function_name]
         function_parameters = json.loads(gpt_tool.function.arguments)
-        function_response = function_to_call(function_parameters.get('crypto_name'), function_parameters.get('fiat_currency'))
+        function_response = function_to_call(function_parameters.get('star_sign'))
         
         messages.append(
             {
