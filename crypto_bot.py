@@ -9,6 +9,16 @@ client = AzureOpenAI(
     api_version="2023-10-01-preview" 
 )
 
+with open("openroute_key.txt", "r") as openroutekey_file:
+    openroute_key = openroutekey_file.read()
+
+openroutekey_file.close()
+
+with open("geo_key.txt", "r") as geokey_file:
+    geo_key = geokey_file.read()
+
+geokey_file.close()
+
 messages = [
     {
         "role" : "system",
@@ -16,7 +26,7 @@ messages = [
     },
     {
         "role" : "user",
-        "content" : "Find the current price of dogecoin in Canadian dollars"
+        "content" : "Find the coordinates of On the Hoof Sydenham"
     }
 ]
 
@@ -27,6 +37,39 @@ def crypto_price(crypto_name, fiat_currency):
     current_price = [coin['current_price'] for coin in data if coin['id'] == crypto_name][0]
     return f"I think the current price of {crypto_name} in {fiat_currency} is {current_price} {fiat_currency}"
 
+def directions(coords_1, coords_3):
+    body = {
+        "coordinates":[
+            coords_1,
+            coords_3
+        ]
+    }
+
+    headers = {
+        'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
+        'Authorization' : '5b3ce3597851110001cf62480b06e857f378414f9c410c1b4ab80066',
+        'Content-Type' : 'application/json; charset=utf-8'
+    }
+
+    route_response = requests.post('https://api.openrouteservice.org/v2/directions/driving-car/json', json=body, headers=headers) 
+    meta_directions = route_response.json()
+
+    steps = meta_directions['routes'][0]['segments'][0]['steps']
+    total_steps = ''
+
+    for direction in steps:
+        total_steps += direction['instruction'] + '\n'
+    #directions = [direction['instruction'] for direction in steps]
+    return f"Okay. You have to {total_steps}"
+
+def coordinates(address):
+    geo_url = f"https://geocode.maps.co/search?q={address}&api_key={geo_key}"
+    geo_response = requests.get(geo_url)
+    geo_data = geo_response.json()
+
+    lat = geo_data[0]['lat']
+    lon = geo_data[0]['lon']
+    return f"Here are the coordinates of {address}: {lat}, {lon} "
 
 functions = [
     {
@@ -49,7 +92,45 @@ functions = [
                 "required" : ["crypto_name", "fiat_currency"]
             }
         }
-    }
+    },
+    {
+        "type" : "function",
+        "function" : {
+            "name" : "get_directions",
+            "description" : "Gets the directions to go from one specified place to another",
+            "parameters" : {
+                "type" : "object", #tells chat-gpt to return key/value pairs
+                "properties" : {
+                    "coords1" : {
+                        "type" : "string",
+                        "description" : "The coordinates of the first place I want to look at. Find the address, then find the coordinates, and return a 2D array with the corresponding longitude, and then the latitude in that order."
+                    },
+                    "coords2" : {
+                        "type" : "string",
+                        "description" : "The coordinates of the first place I want to look at. Find the address, then find the coordinates, and return a 2D array with the corresponding longitude, and then the latitude in that order."
+                    }
+                },
+                "required" : ["coords1", "coords2"]
+            }
+        }
+    },
+    {
+        "type" : "function",
+        "function" : {
+            "name" : "get_coords",
+            "description" : "Gets coordinates of the entered place or address",
+            "parameters" : {
+                "type" : "object", #tells chat-gpt to return key/value pairs
+                "properties" : {
+                    "address" : {
+                        "type" : "string",
+                        "description" : "The name of the place whose coordinates I want to find"
+                    }
+                },
+                "required" : ["address"]
+            }
+        }
+    },
 ]
 
 response = client.chat.completions.create(
@@ -65,7 +146,9 @@ gpt_tools = response.choices[0].message.tool_calls #list of tools/functions used
 
 if gpt_tools:
     available_functions = {
-        "get_crypto_price" : crypto_price
+        "get_crypto_price" : crypto_price,
+        "get_directions" : directions,
+        "get_coords" : coordinates
     }
 
     messages.append(response_message)
@@ -73,7 +156,7 @@ if gpt_tools:
         function_name = gpt_tool.function.name
         function_to_call = available_functions[function_name]
         function_parameters = json.loads(gpt_tool.function.arguments)
-        function_response = function_to_call(function_parameters.get('crypto_name'), function_parameters.get('fiat_currency'))
+        function_response = function_to_call(function_parameters.get('address'))
         
         messages.append(
             {
@@ -90,4 +173,4 @@ if gpt_tools:
         print(second_response.choices[0].message.content)
 
 else:
-    print(response.choices[0].message.content)
+    print(response.choices[0].message)
