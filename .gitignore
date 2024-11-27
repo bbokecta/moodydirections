@@ -1,4 +1,5 @@
 venv/
+*.mp4
 openroute_key.txt
 geo_key.txt
 twitter_keys.json
