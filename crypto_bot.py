@@ -12,7 +12,7 @@ client = AzureOpenAI(
 messages = [
     {
         "role" : "system",
-        "content" : "Respond to everything like a moody teenager"
+        "content" : "Respond to everything like a bored teenager"
     },
     {
         "role" : "user",
@@ -26,6 +26,40 @@ def crypto_price(crypto_name, fiat_currency):
     data = response.json()
     current_price = [coin['current_price'] for coin in data if coin['id'] == crypto_name][0]
     return f"I think the current price of {crypto_name} in {fiat_currency} is {current_price} {fiat_currency}"
+
+def directions(coords_1, coords_3):
+    body = {
+        "coordinates":[
+            coords_1,
+            coords_3
+        ]
+    }
+
+    headers = {
+        'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
+        'Authorization' : '5b3ce3597851110001cf62480b06e857f378414f9c410c1b4ab80066',
+        'Content-Type' : 'application/json; charset=utf-8'
+    }
+
+    route_response = requests.post('https://api.openrouteservice.org/v2/directions/driving-car/json', json=body, headers=headers) 
+    meta_directions = route_response.json()
+
+    steps = meta_directions['routes'][0]['segments'][0]['steps']
+    total_steps = ''
+
+    for direction in steps:
+        total_steps += direction['instruction'] + '\n'
+    #directions = [direction['instruction'] for direction in steps]
+    return f"Okay. You have to {total_steps}"
+
+def coordinates(address):
+    geo_url = f"https://geocode.maps.co/search?q={address}&api_key={geo_key}"
+    geo_response = requests.get(geo_url)
+    geo_data = geo_response.json()
+
+    lat = geo_data[0]['lat']
+    lon = geo_data[0]['lon']
+    return f"Here are the coordinates of {address}: {lat}, {lon} "
 
 def horoscope(star_sign):
     horoscope_url = f"https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily?sign={star_sign}&day=TODAY"
